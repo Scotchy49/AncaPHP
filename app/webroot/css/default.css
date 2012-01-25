@@ -1,0 +1,14 @@
+/* 
+    Document   : default
+    Created on : Jun 1, 2011, 2:34:05 PM
+    Author     : serkan
+    Description:
+        Purpose of the stylesheet follows.
+*/
+
+.logout-btn a {
+    color: white;
+    float: right;
+    position: relative;
+    bottom: 20px;
+}

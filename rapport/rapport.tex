@@ -1,0 +1,255 @@
+\documentclass[12pt]{article}
+
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+
+\usepackage{listings,color}
+\usepackage{textcomp}
+ 
+\definecolor{lightgray}{gray}{0.95}
+\definecolor{gray}{gray}{0.5}
+\definecolor{green}{rgb}{0,0.5,0}
+\definecolor{darkblue}{rgb}{0,0,0.5}
+\definecolor{darkgreen}{rgb}{0,0.5,0}
+\definecolor{orange}{rgb}{1,0.5,0}
+ 
+\lstset{
+  backgroundcolor=\color{lightgray},
+  %numbers=left,
+  %numberstyle=\tiny,
+  %numbersep=5pt,
+  showstringspaces=false,
+  extendedchars=true,
+  tabsize=4,
+  sensitive=false,
+  %frame=leftline,
+  mathescape=false,
+  upquote=true
+}
+ 
+\lstset{
+  language=PHP,
+  keywordstyle=\color{blue}\bfseries,
+  otherkeywords={session_regenerate_id,fwrite,mysql_fetch_array,news_displayNews,myexec},
+  commentstyle=\color{orange}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  identifierstyle=\color{darkblue},
+  emph={[6]if,while,switch,isset,empty,else,function},
+  emphstyle=[6]\color{darkgreen},
+  emph={[12]\ , \}, \{, [, ], =, +, -, <, >, ?, !},
+  emphstyle=[12]\color{darkgreen}\bfseries,
+  emph={[5]SELECT,INSERT,UNION,FROM,WHERE},
+  emphstyle=[5]\color{red}
+}
+
+\pagestyle{headings}
+\author{Serkan Eryilmaz}
+\title{Projet Anca\\Un site web avec Cake PHP}
+\begin{document}
+\maketitle
+\tableofcontents
+  \newpage
+  \section{Introduction}
+    CakePHP est un framework de développement rapide de sites web en PHP. Il propose des outils pour aider à la création de sites web rapidement, en utilisant le design pattern MVC. Il permet de se concentrer sur le coeur du développement, avec une approche modulaire et respectant les principes de programmation SOLID, sans trop se soucier de ce qui se passe “derrière”.
+
+    \begin{description}
+      \item[M] Il intègre un puissant ORM, gère la validation de formulaires, les relations de type OneToOne, OneToMany, ManyToMany et ManyToOne, etc... Les classes de modèles sont les classes qui contiennent principalement les données de notre site web.
+    
+      \item[V] Les vues sont en fait des templates PHP (fichiers .ctp) qui ont accès à la session, aux données passées par le controlleur et aux `helpers'. Ces `helpers' sont en fait des API qui permettent de faire des taches répétitives rapidement (exemple: générer un formulaire, générer un tableau, etc.). Les helpers permettent aussi d'injecter du code javascript (AJAX) directement dans le template sans se soucier d'écrire du javascript, par exemple.
+
+      \item[C] Les controlleurs sont les classes qui contiennent la logique applicative. C'est eux qui vont être appellés à chaque requête, qui vont aller chercher les modèles correspondant de la base de donnée et choisir la vue à afficher et leur passer les données nécessaires. Chaque méthode d'un controlleur correspond à une “action” à implémenter, et la méthode correspondante est executée automatiquement par le système de routage de CakePHP en fonction de l'url de la requête.
+    \end{description}
+  \section{Routage}
+    CakePHP a un système de routage complet qui permet d'associer une URL à un controlleur et une action. Par défaut, le routage est composé comme celui-ci: \emph{http://www.site.com/\{controlleur\}/\{action\}\{[/paramètre]*\}}.
+Si aucune action n'est définie dans l'URL, alors l'action par défaut est “index”. Le controlleur et l'action par défaut (pour l'url ``\emph{http://www.site.com/}'') sont définis dans la configuration du routeur, c'est à dire dans le fichier \emph{/app/config/routes.php}.
+    \subsection*{Exemple}
+      Router::connect('/', array('controller' => 'catalog', 'action' => 'index'));
+  \section{Modèle}
+    Les modèles sont définis dans le dossier /app/models et sont découvert automatiquement par CakePHP, il suffit donc simplement de créer les fichiers modèles dans ce dossier. Le nom d'un modèle doit correspondre à la table relationnelle sous-jacente, sans le s. Par exemple, si nous avons une table relationnelle d'utilisateurs nommé “users”, notre modèle s'appellera “User”, et représentera donc un tuple de notre table.
+    
+    Bien que nous ne devons pas définir les attributs de notre table dans le modèle, nous pouvons définir les relations que l'entité a vis-à-vis des autres entitées. On définit ceux-ci dans une variable et CakePHP les découvrira automatiquement. 
+Le modèle est aussi l'endroit où nous décrivons la validité d'une instance, dans la variable \$validate.
+
+    Il y a aussi une série de méthodes que l'on peut redéfinir afin d'avoir une maitrise supplémentaire sur la validation. Dès que la validation n'est plus superficielle, nous pouvons implémenter ces méthodes afin d'avoir un contrôle supplémentaire sur la manière dont on valide un tuple.
+    \begin{lstlisting}[numbers=left,firstnumber=1,numbersep=-8pt,caption=Exemple modèle]{PHP}
+  class User extends AppModel {
+    var $name = 'User';    
+    var $hasAndBelongsToMany = array(
+      'Product' => array(
+        'className' => 'Product',
+        'joinTable' => 'users_products',
+        'foreignKey' => 'user_id',
+        'associationForeignKey' => 'product_id',
+        'unique' => true
+      )
+    );
+    var $validate = array(
+      'username' => array(
+        'rule' => '/^[a-z0-9]{4,40}$/i',
+        'message' => 'This field must have between\
+                  4 and 40 alphanumeric characters.'
+      ),
+      'password' => array(
+        'rule' => '/^[a-z0-9]{4,40}$/i',
+        'message' => 'This field must have between\
+                  4 and 40 alphanumeric characters.'
+      ),
+      'email' => array(
+        'rule' => 'email',
+        'message' => 'Please supply a valid\
+                  email address.'
+      )
+    );
+
+    function beforeValidate() {
+      if (!$this->id) {
+        if ($this->findByUsername(
+          $this->data['User']['username'])
+        ) {
+          $this->invalidate('username_unique');
+          return false;
+        }
+        return true;
+      }
+    }
+  }
+    \end{lstlisting}
+  \section{Controlleur}
+    Les classes controlleur, qui sont définis dans le dossier \emph{/app/controllers/}, sont les classes où nous auront donc toute notre logique applicative. C'est là que nous allons récupérer les paramètres de la requête, chercher l'information (si nécessaire) dans la base de donnée, et finalement passer ces données à la vue afin qu'elle l'affiche comme elle le souhaite.
+    
+CakePHP permet de définir une classe “AppController”, qui est en fait la classe “mère” de tous les autres controlleurs. Nous pouvons y insérer la logique globale de notre application. Par exemple s'assurer que l'utilisateur est bien enregistré et a les privilèges pour accéder à certaines actions. Ca permet de factoriser le code de manière à ne pas se soucier de ces problèmes dans plusieurs endroits du code en même temps.
+
+Comme pour les modèles, les controlleurs peuvent définir certaines méthodes qui seront appellées automatiquement par CakePHP au moment opportun. La méthode ``\emph{beforeFilter}'', par exemple, est appellée avant que l'action associée à la requête ne soit executée. Il peut donc être très intéressant d'y définir les actions autorisées selon le niveau de privilèges de l'utilisateur, selon qu'il soit authentifié ou non, etc...
+
+Les controlleurs peuvent inclure certaines dépendances, notament envers des classes du modèle, ou vers des helpers qui pourraient être utilisés par la vue. Le controlleur aura donc accès à la couche DAO des différents modèles qu'elle gère. Chacune de ses méthodes correspondront généralement à l'une des vues qu'elle peut offrir, ceci dit une action X peut tout à fait afficher une vue Y.
+Le controlleur a aussi accès à la variable Session (\emph{\$this->Session}) dans lequel il peut écrire, ou lire, mais aussi à la variable Auth (\emph{\$this->Auth}) afin de vérifier que l'utilisateur est bien authentifié. 
+
+Dans mon application, j'ai définit une dépendance vers Auth dans mon controlleur AppController, ce qui fait que par défaut, toutes les actions requièrent une authentification de la part de l'utilisateur. C'est seulement dans les controlleurs que j'ai levé cette obligation, via la méthode beforeFilter (\emph{\$this->Auth->allow("*")}). 
+Le controlleur passe des données à la vue via les méthodes \emph{\$this->set(clé, valeur)}. La variable est ensuite directement accessible depuis la vue depuis la variable \emph{\$clé}.
+
+    \begin{lstlisting}[numbers=left,firstnumber=1,numbersep=-8pt,caption=Exemple controlleur]{PHP}
+  class CatalogController extends AppController {
+    var $name = 'Catalog';
+    var $uses = array('Product', 'User');
+    var $helpers = array( 'Ajax', 'Html', 'Javascript' );
+
+    function index() {
+      $this->set('products', 
+        $this->Product->find('all'));
+        
+      if( $this->Auth->user() ) {
+        $userWithProducts = $this->User->findById(
+          $this->Auth->user('id')
+        );
+        $this->set('card',$userWithProducts['Product']);
+      }
+    }
+    function search() {
+      if( !empty($this->data['term']) ) {
+        $term = '%'.$this->data['term'].'%';
+
+        $conditions = array("OR" =>  array( 
+          'Product.name LIKE' => $term, 
+          'Product.description LIKE' => $term ));
+          
+        $this->set('products', 
+          $this->Product->find('all', array(
+            'conditions' => $conditions)));
+            
+        if( $this->Auth->user() ) {
+          $userWithProducts = $this->User->findById(
+            $this->Auth->user('id'));
+          $this->set('card', 
+            $userWithProducts['Product']);
+        }
+        $this->render('index');
+      } else {
+        $this->redirect(array( 'action' => 'index'));
+      }
+    }
+    function beforeFilter() {
+      $this->Auth->allow("*");
+      parent::beforeFilter();
+    }
+  }
+    \end{lstlisting}
+  \section{Vue}
+    La vue est l'endroit où nous allons donc définir la manière dont on va afficher les données du modèle à l'utilisateur. CakePHP permet aux vues d'accéder aux variables passées par le controlleur en créant un namespace virtuel dans la vue. La vue a donc un accès privilégié aux données qui lui sont passées, et y accède directement dans son scope, sans que les autres vues qui pourraient être affichées ne soient obstruées par ces données.
+    
+    CakePHP catégorise en 3 grandes partie la hiérarchie visuelle:
+    \begin{description}
+      \item[Layout] Un squelette appliqué à toutes les vues. Définis dans \emph{app/views/layouts}
+      \item[Vue] Le template qui va récupérer les données du controlleur. Définies dans \emph{/app/views/\{controlleur correspondant\}}
+      \item[Élément] Utilisés par la vue pour afficher certaines parties qu'elle ne sait ou ne doit pas gérer. La vue peut ou pas passer des données à chaque élément qu'elle veut afficher. Définis dans \emph{/app/views/elements/} et sont accessibles d'utilisation à toutes les vues.
+    \end{description}
+    \begin{lstlisting}[numbers=left,firstnumber=1,numbersep=-8pt,caption=Exemple vue]{PHP}
+  <? 
+    echo $this->Html->script(array(
+      'jquery-1.4.3.min', 
+      'jquery.fancybox-1.3.4', 
+      'image-popup'));
+    echo $this->Html->css(array(
+      'catalog', 
+      'jquery.fancybox-1.3.4'));
+  ?>
+  <div class="catalog">
+    <?
+        echo $form->create(false, array(
+          'action' => 'search')); 
+        echo $form->input('term', array(
+          'label' => false, 
+          'div' => false));
+        echo $form->end('Search');
+    ?>
+    <table>
+    <?php foreach( $products as $product ) { 
+      $p = $product['Product'];
+    ?>
+    
+      <tr>
+        <td width="150">
+          <a class="gallery-img" href="<?=$p['image']?>">
+            <img src="<?=$p['image']?>" 
+                 alt="<?=$p['name']?>" 
+                 height="100">
+          </a>
+        </td>
+        <td>
+          <h3 style="display: inline;">
+            <?=$p['name'];?>
+          </h3>
+          <h5><?=$p['price'];?></h5>
+          <br />
+          <p><?=$p['description'];?></p>
+          <? 
+            echo $html->link('Add to card', 
+              "/card/add/".$p['id']); 
+          ?>
+        </td>
+      </tr>    
+    <? } ?>
+    </table>
+  </div>
+  <? if( isset($card) && count($card) ) { ?>
+    <div class="inline-card">
+      <? echo $this->element('inlinecard', array(
+        'card' => $card)) ?>
+    </div>
+  <? } ?>
+    \end{lstlisting}
+  \begin{thebibliography}{9}
+    \bibitem{mvc}
+      \emph{Le modèle MVC}, Wikipedia\\
+      \mbox{http://en.wikipedia.org/wiki/Model–view–controller}
+    \bibitem{cake}
+      \emph{CakePHP}\\
+      \mbox{http://cakephp.org/}
+    \bibitem{cake-manual}
+      \emph{Manuel de CakePHP}\\
+      \mbox{http://book.cakephp.org/}
+  \end{thebibliography}
+\end{document}

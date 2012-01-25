@@ -1,0 +1,27 @@
+/* 
+    Document   : catalog.css
+    Created on : May 31, 2011, 4:10:06 PM
+    Author     : serkan
+    Description:
+        Purpose of the stylesheet follows.
+*/
+
+/* 
+   TODO customize this sample style
+   Syntax recommendation http://www.w3.org/TR/REC-CSS2/
+*/
+
+.catalog {
+    width: 85%;
+    float: left;
+}
+
+.inline-card {
+    float: left;
+    width: 15%;
+    background: #003D4C;
+}
+
+.inline-card li {
+    list-style-type: none;
+}
